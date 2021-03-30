@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/nordcloud/go-pingdom/pingdom"
 )
 
@@ -56,7 +56,7 @@ func teamForResource(d *schema.ResourceData) (*pingdom.Team, error) {
 }
 
 func resourcePingdomTeamCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	team, err := teamForResource(d)
 	if err != nil {
@@ -74,7 +74,7 @@ func resourcePingdomTeamCreate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourcePingdomTeamRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	teams, err := client.Teams.List()
 	if err != nil {
@@ -119,7 +119,7 @@ func resourcePingdomTeamRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourcePingdomTeamUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -140,7 +140,7 @@ func resourcePingdomTeamUpdate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourcePingdomTeamDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {

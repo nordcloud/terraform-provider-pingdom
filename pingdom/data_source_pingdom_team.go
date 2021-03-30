@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/nordcloud/go-pingdom/pingdom"
 )
 
@@ -29,7 +29,7 @@ func dataSourcePingdomTeam() *schema.Resource {
 }
 
 func dataSourcePingdomTeamRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 	name := d.Get("name").(string)
 	teams, err := client.Teams.List()
 	log.Printf("==== teams : %v", teams)
