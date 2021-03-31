@@ -155,6 +155,28 @@ resource "pingdom_contact" "second_contact" {
 }
 ```
 
+**User**
+
+An user resource is either an user invitation or an active user on the Solarwinds user portal.
+These users can be configured to access a range of applications, including Pingdom. An user becomes active once he
+manually accepts the invitation sent to his email as specified at the time the invitation is created.
+
+```hcl
+
+resource "pingdom_user" "user" {
+  email = "foo@nordcloud.com"
+  role = "MEMBER"
+  products {
+    name = "APPOPTICS"
+    role = "MEMBER"
+  }
+  products {
+    name = "PINGDOM"
+    role = "MEMBER"
+  }
+}
+```
+
 ## Resources ##
 
 ### Pingdom Check ###
@@ -258,6 +280,15 @@ The following attributes are exported:
       * **address**: Email address to notify
 
       * **severity**: Severity of this notification. One of HIGH|LOW
+    
+### Pingdom User ###
+
+* **email**: (Required) Email of the contact, an invitation will be sent to this address
+* **role**: The role in the Solarwinds adminpanel, possible values: "MEMBER", "ADMIN"
+* **products**: Permission to each application, the list must be comprehensive. The user will have access to application listed only
+    * **name**: The name of the application, possible values: "APPOPTICS", "PINGDOM", "LOGGLY", "PAPERTRAIL"
+    * **role**: The permission, possible values: "ADMIN", "OWNER", "MEMBER", "NO_ACCESS"
+
 
 ## Develop The Provider ##
 
