@@ -1,18 +1,25 @@
 package pingdom
 
 import (
-	"fmt"
+	"context"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/nordcloud/go-pingdom/solarwinds"
 	"log"
+	"time"
+)
+
+const (
+	DeleteUserRetryTimeout = 1 * time.Minute
 )
 
 func resourceSolarwindsUser() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceSolarwindsUserCreate,
-		Read:   resourceSolarwindsUserRead,
-		Update: resourceSolarwindsUserUpdate,
-		Delete: resourceSolarwindsUserDelete,
+		CreateContext: resourceSolarwindsUserCreate,
+		ReadContext:   resourceSolarwindsUserRead,
+		UpdateContext: resourceSolarwindsUserUpdate,
+		DeleteContext: resourceSolarwindsUserDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -73,7 +80,7 @@ func expandUserProducts(l []interface{}) []solarwinds.Product {
 		return nil
 	}
 
-	m := make([]solarwinds.Product, len(l))
+	m := make([]solarwinds.Product, 0, len(l))
 	for _, tfMapRaw := range l {
 		tfMap, ok := tfMapRaw.(map[string]interface{})
 		if !ok {
@@ -92,76 +99,101 @@ func expandUserProducts(l []interface{}) []solarwinds.Product {
 	return m
 }
 
-func resourceSolarwindsUserCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceSolarwindsUserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Clients).Solarwinds
 
 	user, err := userFromResource(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	log.Printf("[DEBUG] User create configuration: %#v", d.Get("email"))
 	err = client.UserService.Create(*user)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	d.SetId(user.Email)
-	return nil
+	return resourceSolarwindsUserRead(ctx, d, meta)
 }
 
-func resourceSolarwindsUserRead(d *schema.ResourceData, meta interface{}) error {
+func resourceSolarwindsUserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Clients).Solarwinds
 
 	email := d.Id()
 	user, err := client.UserService.Retrieve(email)
 	if err != nil {
-		return fmt.Errorf("error retrieving user with email %v", email)
+		return diag.Errorf("error retrieving user with email %v", email)
 	}
 	if user == nil {
 		d.SetId("")
 		return nil
 	}
-	if err := d.Set("role", user.Role); err != nil {
-		return err
-	}
 
-	products := schema.NewSet(
-		func(product interface{}) int { return String(product.(solarwinds.Product).Name) },
-		[]interface{}{},
-	)
-	for _, product := range user.Products {
-		products.Add(product)
-	}
-	if err := d.Set("products", products); err != nil {
-		return err
+	for k, v := range map[string]interface{}{
+		"email":    user.Email,
+		"role":     user.Role,
+		"products": flattenUserProducts(user.Products),
+	} {
+		if err := d.Set(k, v); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
 }
 
-func resourceSolarwindsUserUpdate(d *schema.ResourceData, meta interface{}) error {
+func flattenUserProducts(l []solarwinds.Product) []interface{} {
+	if l == nil {
+		return []interface{}{}
+	}
+	sets := make([]interface{}, 0, len(l))
+	for _, item := range l {
+		tfMap := map[string]interface{}{
+			"name": item.Name,
+			"role": item.Role,
+		}
+		sets = append(sets, tfMap)
+	}
+
+	return sets
+}
+
+func resourceSolarwindsUserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Clients).Solarwinds
+	if d.HasChanges("role", "products") {
+		user, err := userFromResource(d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 
-	user, err := userFromResource(d)
-	if err != nil {
-		return err
+		log.Printf("[DEBUG] User update configuration: %#v", user)
+
+		if err = client.UserService.Update(*user); err != nil {
+			return diag.Errorf("Error updating user: %s", err)
+		}
 	}
 
-	log.Printf("[DEBUG] User update configuration: %#v", user)
-
-	if err = client.UserService.Update(*user); err != nil {
-		return fmt.Errorf("Error updating user: %s", err)
-	}
-	return nil
+	return resourceSolarwindsUserRead(ctx, d, meta)
 }
 
-func resourceSolarwindsUserDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceSolarwindsUserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Clients).Solarwinds
 
 	id := d.Id()
-	if err := client.UserService.Delete(id); err != nil {
-		return fmt.Errorf("error deleting user: %s", err)
+	err := resource.RetryContext(ctx, DeleteUserRetryTimeout, func() *resource.RetryError {
+		if err := client.UserService.Delete(id); err != nil {
+			clientErr := err.(*solarwinds.ClientError)
+			if solarwinds.ErrCodeDeleteActiveUserException == clientErr.StatusCode {
+				return resource.NonRetryableError(err)
+			}
+			return resource.RetryableError(err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return diag.Errorf("error deleting user: %s", err)
 	}
 
 	return nil

@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/nordcloud/go-pingdom/pingdom"
 )
 
 var testAccProviders map[string]*schema.Provider
@@ -45,7 +44,7 @@ func TestProviderConfigure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config := rp.Meta().(*pingdom.Client)
+	config := rp.Meta().(*Clients).Pingdom
 
 	if config.APIToken != expectedToken {
 		t.Fatalf("bad: %#v", config)

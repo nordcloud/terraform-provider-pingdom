@@ -13,15 +13,18 @@ func TestAccUser(t *testing.T) {
 	resourceName := "pingdom_user.test"
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviderFactories,
-		CheckDestroy:      testAccCheckUserDestroy,
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckUserDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUserConfig(email, "MEMBER", "APPOPTICS", "MEMBER"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUserExist(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "role", "MEMBER"),
+					resource.TestCheckResourceAttr(resourceName, "products.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "products.0.name", "APPOPTICS"),
+					resource.TestCheckResourceAttr(resourceName, "products.0.role", "MEMBER"),
 				),
 			},
 			{
@@ -82,12 +85,10 @@ func testAccUserConfig(email string, role string, productName string, productRol
 resource "pingdom_user" "test" {
 	email = %[1]q
 	role = %[2]q
-	products = [
-		{
-			"name": %[3]q
-			"role": %[4]q
-		}
-	]
+	products {
+		name = %[3]q
+		role = %[4]q
+	}
 }
 `, email, role, productName, productRole)
 }

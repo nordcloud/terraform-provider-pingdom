@@ -41,6 +41,10 @@ func (c *Config) Client() (*Clients, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = solarwindsClient.Init()
+	if err != nil {
+		return nil, err
+	}
 	return &Clients{
 		Pingdom:    pingdomClient,
 		Solarwinds: solarwindsClient,
