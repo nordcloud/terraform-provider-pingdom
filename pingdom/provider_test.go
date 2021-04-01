@@ -28,6 +28,10 @@ func TestProvider(t *testing.T) {
 func TestProviderConfigure(t *testing.T) {
 	var expectedToken string
 
+	var isAccTestEnabled bool
+	if v := os.Getenv("TF_ACC"); v != "" {
+		isAccTestEnabled = true
+	}
 	if v := os.Getenv("PINGDOM_API_TOKEN"); v != "" {
 		expectedToken = v
 	} else {
@@ -38,16 +42,23 @@ func TestProviderConfigure(t *testing.T) {
 		"api_token": expectedToken,
 	}
 
-	rp := Provider()
-	err := rp.Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Previously there is only one client, which is the Pingdom client. It does not require obtaining any kind of
+	// token during its initialization process, thus it will not verify whether the token provided is valid or not.
+	// However, the case is different for the Solarwinds client because it will not initialize successfully unless
+	// there are real user credentials provided.	In this case, we need to skip the init process to avoid any test
+	// errors if the credentials are not provided.
+	if isAccTestEnabled {
+		rp := Provider()
+		err := rp.Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	config := rp.Meta().(*Clients).Pingdom
+		config := rp.Meta().(*Clients).Pingdom
 
-	if config.APIToken != expectedToken {
-		t.Fatalf("bad: %#v", config)
+		if config.APIToken != expectedToken {
+			t.Fatalf("bad: %#v", config)
+		}
 	}
 }
 
