@@ -1,16 +1,29 @@
 package pingdom
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/nordcloud/go-pingdom/solarwinds"
+	"html/template"
 	"testing"
 )
 
-func TestAccUser(t *testing.T) {
+func TestAccUser_basic(t *testing.T) {
 	email := acctest.RandString(10) + "@foo.com"
 	resourceName := "pingdom_user.test"
+	user := solarwinds.User{
+		Email: email,
+		Role:  "MEMBER",
+		Products: []solarwinds.Product{
+			{
+				Name: "APPOPTICS",
+				Role: "MEMBER",
+			},
+		},
+	}
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -18,13 +31,73 @@ func TestAccUser(t *testing.T) {
 		CheckDestroy: testAccCheckUserDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUserConfig(email, "MEMBER", "APPOPTICS", "MEMBER"),
+				Config: testAccUser_basicConfig(user),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUserExist(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "role", "MEMBER"),
 					resource.TestCheckResourceAttr(resourceName, "products.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "products.0.name", "APPOPTICS"),
 					resource.TestCheckResourceAttr(resourceName, "products.0.role", "MEMBER"),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
+func TestAccUser_update(t *testing.T) {
+	email := acctest.RandString(10) + "@foo.com"
+	resourceName := "pingdom_user.test"
+	user := solarwinds.User{
+		Email: email,
+		Role:  "MEMBER",
+		Products: []solarwinds.Product{
+			{
+				Name: "APPOPTICS",
+				Role: "MEMBER",
+			},
+		},
+	}
+	userUpdate := user
+	userUpdate.Role = "ADMIN"
+	userUpdate.Products = append(userUpdate.Products, solarwinds.Product{
+		Name: "PINGDOM",
+		Role: "VIEWER",
+	})
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckUserDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccUser_basicConfig(user),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckUserExist(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "role", user.Role),
+					resource.TestCheckResourceAttr(resourceName, "products.#", fmt.Sprint(len(user.Products))),
+					resource.TestCheckResourceAttr(resourceName, "products.0.name", user.Products[0].Name),
+					resource.TestCheckResourceAttr(resourceName, "products.0.role", user.Products[0].Role),
+				),
+			},
+			{
+				Config: testAccUser_basicConfig(userUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckUserExist(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "role", userUpdate.Role),
+					resource.TestCheckResourceAttr(resourceName, "products.#", fmt.Sprint(len(userUpdate.Products))),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "products.*", map[string]string{
+						"name": userUpdate.Products[0].Name,
+						"role": userUpdate.Products[0].Role,
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "products.*", map[string]string{
+						"name": userUpdate.Products[1].Name,
+						"role": userUpdate.Products[1].Role,
+					}),
 				),
 			},
 			{
@@ -80,15 +153,23 @@ func testAccCheckUserExist(n string) resource.TestCheckFunc {
 	}
 }
 
-func testAccUserConfig(email string, role string, productName string, productRole string) string {
-	return fmt.Sprintf(`
+func testAccUser_basicConfig(user solarwinds.User) string {
+	t := template.Must(template.New("basicConfig").Parse(`
 resource "pingdom_user" "test" {
-	email = %[1]q
-	role = %[2]q
+	email = "{{.Email}}"
+	role = "{{.Role}}"
+	{{range .Products}}
 	products {
-		name = %[3]q
-		role = %[4]q
+		name = "{{.Name}}"
+		role = "{{.Role}}"
 	}
+	{{end}}
 }
-`, email, role, productName, productRole)
+`))
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, user); err != nil {
+		panic(err)
+	}
+	result := buf.String()
+	return result
 }
