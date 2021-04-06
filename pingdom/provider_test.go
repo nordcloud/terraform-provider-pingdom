@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 var testAccProviders map[string]*schema.Provider
@@ -59,12 +59,6 @@ func TestProviderConfigure(t *testing.T) {
 		if config.APIToken != expectedToken {
 			t.Fatalf("bad: %#v", config)
 		}
-	}
-}
-
-func testAccPreCheck(t *testing.T) {
-	if v := os.Getenv("PINGDOM_API_TOKEN"); v == "" {
-		t.Fatal("PINGDOM_API_TOKEN environment variable must be set for acceptance tests")
 	}
 }
 
