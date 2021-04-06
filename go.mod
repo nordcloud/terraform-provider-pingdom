@@ -15,4 +15,4 @@ require (
 	google.golang.org/api v0.34.0 // indirect
 )
 
-replace github.com/nordcloud/go-pingdom => github.com/chszchen-nordcloud/go-pingdom v1.3.2-0.20210331122307-dd5dcccd0443
+replace github.com/nordcloud/go-pingdom => github.com/chszchen-nordcloud/go-pingdom v1.3.2-0.20210406083256-6e0f94e78bc6
