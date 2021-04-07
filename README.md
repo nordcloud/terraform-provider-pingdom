@@ -277,11 +277,11 @@ The following attributes are exported:
 
   * **active** -  (Required) The status of the integration
 
-  * **user_date**:  (Required) Block resource describing an integration
+  * **name**:  (Required) The integration name
 
-      * **name**:  (Required) The integration name
+  * **url**:  (Optional)  The integration url, only required while provider is webhook
 
-      * **url**:  (Required)  The integration url
+      
 
 ## Develop The Provider ##
 

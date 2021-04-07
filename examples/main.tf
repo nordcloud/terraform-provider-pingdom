@@ -68,11 +68,9 @@ resource "pingdom_contact" "second_contact" {
 resource "pingdom_integration" "integration" {
 		provider_name = "webhook"
 		active = false
-		data = {
-			name="test1"
-			url="https://www.example.com"
-		}
-	  }
+		name="test1"
+		url="https://www.example.com"
+}
 
 data "pingdom_contact" "data_contact" {
   name = "janedoe"

@@ -3,11 +3,17 @@ package pingdom
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/nordcloud/go-pingdom/pingdomext"
+)
+
+const (
+	WEBHOOK string = "webhook"
+	LIBRATO string = "librato"
 )
 
 func resourcePingdomIntegration() *schema.Resource {
@@ -28,43 +34,55 @@ func resourcePingdomIntegration() *schema.Resource {
 				Type:     schema.TypeBool,
 				Required: true,
 			},
-			"data": {
-				Type:     schema.TypeMap,
+			"name": {
+				Type:     schema.TypeString,
 				Required: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
+			},
+			"url": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 		},
 	}
 }
 
 func integrationForResource(d *schema.ResourceData, client *pingdomext.Client) (pingdomext.Integration, error) {
-	integration := &pingdomext.WebHookIntegration{}
+
+	var active bool
+	var providerName string
+	var name string
 
 	// required
-	if v, ok := d.GetOk("provider_name"); ok {
-		integrationProvider, err := getIntegrationProvider(v.(string), client)
-		if err != nil {
-			return nil, err
-		}
-		integration.ProviderID = integrationProvider.ID
-	}
-
 	if v, ok := d.GetOk("active"); ok {
-		integration.Active = v.(bool)
+		active = v.(bool)
+	}
+	if v, ok := d.GetOk("provider_name"); ok {
+		providerName = v.(string)
+	}
+	if v, ok := d.GetOk("name"); ok {
+		name = v.(string)
 	}
 
-	if v, ok := d.GetOk("data"); ok {
-		data := v.(map[string]interface{})
-		userData := &pingdomext.WebHookData{
-			Name: data["name"].(string),
-			URL:  data["url"].(string),
-		}
+	integrationProvider, err := getIntegrationProvider(providerName, client)
+	if err != nil {
+		return nil, err
+	}
+	if providerName == WEBHOOK {
+		integration := &pingdomext.WebHookIntegration{}
+		integration.ProviderID = integrationProvider.ID
+		integration.Active = active
+		userData := &pingdomext.WebHookData{}
 		integration.UserData = userData
+		integration.UserData.Name = name
+
+		if v, ok := d.GetOk("url"); ok {
+			integration.UserData.URL = v.(string)
+		}
+		return integration, nil
 	}
 
-	return integration, nil
+	return nil, fmt.Errorf("Unsupported integration provider %s", providerName)
+
 }
 
 func resourcePingdomIntegrationCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -75,7 +93,7 @@ func resourcePingdomIntegrationCreate(ctx context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 
-	//log.Printf("[DEBUG] Integration create configuration: %#v", d.Get("data").(map[string]interface{})["Name"].(string))
+	log.Printf("[DEBUG] Integration create configuration: %#v", d.Get("name").(string))
 	result, err := client.Integrations.Create(integration)
 	if err != nil {
 		return diag.FromErr(err)
@@ -102,7 +120,7 @@ func resourcePingdomIntegrationUpdate(ctx context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 
-	//log.Printf("[DEBUG] Integration update configuration: %#v", d.Get("data").(map[string]interface{})["Name"].(string))
+	log.Printf("[DEBUG] Integration update configuration: %#v", d.Get("name").(string))
 	result, err := client.Integrations.Update(id, integration)
 	if err != nil {
 		return diag.FromErr(err)
@@ -149,8 +167,13 @@ func resourcePingdomIntegrationRead(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	if err := d.Set("data", integration.UserData); err != nil {
+	if err := d.Set("name", integration.UserData["name"]); err != nil {
 		return diag.FromErr(err)
+	}
+	if integration.Name == WEBHOOK {
+		if err := d.Set("url", integration.UserData["url"]); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil

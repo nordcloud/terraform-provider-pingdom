@@ -26,8 +26,8 @@ func TestAccPingdomIntegration_basic(t *testing.T) {
 					testAccCheckPingdomIntegrationExists(resourceName, &integration),
 					resource.TestCheckResourceAttr(resourceName, "provider_name", "webhook"),
 					resource.TestCheckResourceAttr(resourceName, "active", "false"),
-					resource.TestCheckResourceAttr(resourceName, "data.name", "test-3"),
-					resource.TestCheckResourceAttr(resourceName, "data.url", "https://www.example.com"),
+					resource.TestCheckResourceAttr(resourceName, "name", "test-3"),
+					resource.TestCheckResourceAttr(resourceName, "url", "https://www.example.com"),
 				),
 			},
 			{
@@ -55,8 +55,8 @@ func TestAccPingdomIntegration_update(t *testing.T) {
 					testAccCheckPingdomIntegrationExists(resourceName, &integration),
 					resource.TestCheckResourceAttr(resourceName, "provider_name", "webhook"),
 					resource.TestCheckResourceAttr(resourceName, "active", "false"),
-					resource.TestCheckResourceAttr(resourceName, "data.name", "test-3"),
-					resource.TestCheckResourceAttr(resourceName, "data.url", "https://www.example.com"),
+					resource.TestCheckResourceAttr(resourceName, "name", "test-3"),
+					resource.TestCheckResourceAttr(resourceName, "url", "https://www.example.com"),
 				),
 			},
 			{
@@ -70,8 +70,8 @@ func TestAccPingdomIntegration_update(t *testing.T) {
 					testAccCheckPingdomIntegrationExists(resourceName, &integration),
 					resource.TestCheckResourceAttr(resourceName, "provider_name", "webhook"),
 					resource.TestCheckResourceAttr(resourceName, "active", "true"),
-					resource.TestCheckResourceAttr(resourceName, "data.name", "test-4"),
-					resource.TestCheckResourceAttr(resourceName, "data.url", "https://www.example2.com"),
+					resource.TestCheckResourceAttr(resourceName, "name", "test-4"),
+					resource.TestCheckResourceAttr(resourceName, "url", "https://www.example2.com"),
 				),
 			},
 		},
@@ -136,10 +136,8 @@ func testAccWebhookIntegration_basicConfig(providerName string, active bool, nam
 	return fmt.Sprintf(`resource "pingdom_integration" "test" {
 		provider_name = "%s"
 		active = %t
-		data = {
-			name="%s"
-			url="%s"
-		}
+		name="%s"
+		url="%s"
 	  }
 	  `, providerName, active, name, url)
 }
