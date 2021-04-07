@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/nordcloud/go-pingdom/pingdom"
 )
 
 var testAccProviders map[string]*schema.Provider
@@ -45,7 +44,7 @@ func TestProviderConfigure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config := rp.Meta().(*pingdom.Client)
+	config := rp.Meta().(*Clients).Pingdom
 
 	if config.APIToken != expectedToken {
 		t.Fatalf("bad: %#v", config)
@@ -55,5 +54,11 @@ func TestProviderConfigure(t *testing.T) {
 func testAccPreCheck(t *testing.T) {
 	if v := os.Getenv("PINGDOM_API_TOKEN"); v == "" {
 		t.Fatal("PINGDOM_API_TOKEN environment variable must be set for acceptance tests")
+	}
+	if v := os.Getenv("SOLARWINDS_USER"); v == "" {
+		t.Fatal("SOLARWINDS_USER environment variable must be set for acceptance tests")
+	}
+	if v := os.Getenv("SOLARWINDS_PASSWD"); v == "" {
+		t.Fatal("SOLARWINDS_PASSWD environment variable must be set for acceptance tests")
 	}
 }
