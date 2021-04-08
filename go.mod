@@ -10,7 +10,10 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.5.0
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/nordcloud/go-pingdom v1.3.2-0.20210406113751-d4f206ed9396
+	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/zclconf/go-cty v1.7.1 // indirect
 	golang.org/x/tools v0.0.0-20201028111035-eafbe7b904eb // indirect
 	google.golang.org/api v0.34.0 // indirect
 )
+
+replace github.com/nordcloud/go-pingdom => /Users/chszchen/GolandProjects/go-pingdom
