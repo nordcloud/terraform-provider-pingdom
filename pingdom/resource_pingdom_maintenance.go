@@ -150,7 +150,7 @@ func updateResourceFromMaintenanceResponse(d *schema.ResourceData, m *pingdom.Ma
 }
 
 func resourcePingdomMaintenanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	maintenance, err := maintenanceForResource(d)
 	if err != nil {
@@ -168,7 +168,7 @@ func resourcePingdomMaintenanceCreate(ctx context.Context, d *schema.ResourceDat
 }
 
 func resourcePingdomMaintenanceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -186,7 +186,7 @@ func resourcePingdomMaintenanceRead(ctx context.Context, d *schema.ResourceData,
 }
 
 func resourcePingdomMaintenanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -205,7 +205,7 @@ func resourcePingdomMaintenanceUpdate(ctx context.Context, d *schema.ResourceDat
 }
 
 func resourcePingdomMaintenanceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	client := meta.(*pingdom.Client)
+	client := meta.(*Clients).Pingdom
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {

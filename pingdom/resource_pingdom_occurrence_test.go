@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/nordcloud/go-pingdom/pingdom"
 	"github.com/nordcloud/go-pingdom/solarwinds"
-	"github.com/stretchr/testify/assert"
 	"html/template"
 	"strconv"
 	"testing"
@@ -15,14 +14,9 @@ import (
 )
 
 func TestAccOccurrence_basic(t *testing.T) {
-	resourceName := "pingdom_occurrence.test"
 	occurrenceNum := 3
-	resp := createNewMaintenance(t, time.Duration(occurrenceNum))
-	group := OccurrenceGroup{
-		MaintenanceId: int64(resp.ID),
-		From:          resp.From,
-		To:            resp.EffectiveTo,
-	}
+	maintenance := getMaintenance(time.Duration(occurrenceNum))
+	resourceName := "pingdom_occurrence.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -30,10 +24,10 @@ func TestAccOccurrence_basic(t *testing.T) {
 		CheckDestroy: testAccCheckOccurrenceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOccurrence_basicConfig(group, 0, 0),
+				Config: testAccOccurrence_basicConfig(*maintenance, 0, 0),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(resp.From, 10)),
-					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(resp.To, 10)),
+					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(maintenance.From, 10)),
+					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(maintenance.To, 10)),
 					resource.TestCheckResourceAttr(resourceName, "size", strconv.Itoa(occurrenceNum+1)),
 				),
 			},
@@ -42,16 +36,11 @@ func TestAccOccurrence_basic(t *testing.T) {
 }
 
 func TestAccOccurrence_update(t *testing.T) {
-	resourceName := "pingdom_occurrence.test"
 	occurrenceNum := 3
-	resp := createNewMaintenance(t, time.Duration(occurrenceNum))
-	group := OccurrenceGroup{
-		MaintenanceId: int64(resp.ID),
-		From:          resp.From,
-		To:            resp.EffectiveTo,
-	}
+	maintenance := getMaintenance(time.Duration(occurrenceNum))
+	resourceName := "pingdom_occurrence.test"
 
-	from, to := resp.From, time.Unix(resp.To, 0).Add(1*time.Hour).Unix()
+	from, to := maintenance.From, time.Unix(maintenance.To, 0).Add(1*time.Hour).Unix()
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -59,15 +48,15 @@ func TestAccOccurrence_update(t *testing.T) {
 		CheckDestroy: testAccCheckOccurrenceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOccurrence_basicConfig(group, 0, 0),
+				Config: testAccOccurrence_basicConfig(*maintenance, 0, 0),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(resp.From, 10)),
-					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(resp.To, 10)),
+					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(maintenance.From, 10)),
+					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(maintenance.To, 10)),
 					resource.TestCheckResourceAttr(resourceName, "size", strconv.Itoa(occurrenceNum+1)),
 				),
 			},
 			{
-				Config: testAccOccurrence_basicConfig(group, from, to),
+				Config: testAccOccurrence_basicConfig(*maintenance, from, to),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(from, 10)),
 					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(to, 10)),
@@ -108,20 +97,15 @@ func testAccCheckOccurrenceDestroy(s *terraform.State) error {
 		} else if size != 0 {
 			return fmt.Errorf("the occurrence has not been deleted, %d left", size)
 		}
-
-		_, err := client.Maintenances.Delete(int(g.MaintenanceId))
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
 
-func createNewMaintenance(t *testing.T, occurrenceNum time.Duration) *pingdom.MaintenanceResponse {
+func getMaintenance(occurrenceNum time.Duration) *pingdom.MaintenanceWindow {
 	now := time.Now()
 	from := now.Add(1 * time.Hour)
 	to := from.Add(1 * time.Hour)
-	maintenance := pingdom.MaintenanceWindow{
+	return &pingdom.MaintenanceWindow{
 		Description:    "terraform resource test - " + solarwinds.RandString(10),
 		From:           from.Unix(),
 		To:             to.Unix(),
@@ -129,24 +113,25 @@ func createNewMaintenance(t *testing.T, occurrenceNum time.Duration) *pingdom.Ma
 		RepeatEvery:    1,
 		EffectiveTo:    to.Add(occurrenceNum * 24 * time.Hour).Unix(),
 	}
-
-	pingdomClient, err := pingdom.NewClientWithConfig(pingdom.ClientConfig{})
-	assert.NoError(t, err)
-	resp, err := pingdomClient.Maintenances.Create(&maintenance)
-	assert.NoError(t, err)
-	resp, err = pingdomClient.Maintenances.Read(resp.ID)
-	assert.NoError(t, err)
-	return resp
 }
 
-func testAccOccurrence_basicConfig(group OccurrenceGroup, from int64, to int64) string {
+func testAccOccurrence_basicConfig(maintenance pingdom.MaintenanceWindow, from int64, to int64) string {
 	t := template.Must(template.New("basicConfig").Parse(`
+{{with .maintenance}}
+resource "pingdom_maintenance" "test" {
+	description = "{{.Description}}"
+	from = {{.From}}
+	to = {{.To}}
+	recurrencetype = "day"
+	repeatevery = 1
+	effectiveto = {{.EffectiveTo}}
+}
+{{end}}
+
 resource "pingdom_occurrence" "test" {
-	{{with .group}}
-	maintenance_id = {{.MaintenanceId}}
-	effective_from = {{.From}}
-	effective_to = {{.To}}
-	{{end}}
+	maintenance_id = pingdom_maintenance.test.id
+	effective_from = pingdom_maintenance.test.from
+	effective_to = pingdom_maintenance.test.effectiveto
 	{{if .from}}
 	from = {{.from}}
 	{{end}}
@@ -157,9 +142,9 @@ resource "pingdom_occurrence" "test" {
 `))
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, map[string]interface{}{
-		"group": group,
-		"from":  from,
-		"to":    to,
+		"maintenance": maintenance,
+		"from":        from,
+		"to":          to,
 	}); err != nil {
 		panic(err)
 	}
