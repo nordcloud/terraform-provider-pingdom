@@ -155,6 +155,28 @@ resource "pingdom_contact" "second_contact" {
 }
 ```
 
+**Maintenance**
+
+The maintenance resource is used to define a one time or repetitive maintenance window and bond the maintenance window with one or more uptime and tms checks.
+
+```hcl
+resource "pingdom_check" "test" {
+  name = "test-check"
+  host = "www.example.com"
+  type = "http"
+}
+
+resource "pingdom_maintenance" "test" {
+  description    = "test-maintenance"
+  from           = 2717878693
+  to             = 2718878693
+  effectiveto    = 2718978693
+  recurrencetype = "week"
+  repeatevery    = 4
+  uptimeids      = [pingdom_check.test.id]
+}
+```
+
 ## Resources ##
 
 ### Pingdom Check ###
@@ -167,9 +189,9 @@ The following common attributes for all check types can be set:
 
   * **host** - (Required) The hostname to check.  Should be in the format `example.com`.
 
-  * **resolution** - (Required) The time in minutes between each check.  Allowed values: (1,5,15,30,60).
-
   * **type** - (Required) The check type.  Allowed values: (http, ping, tcp, dns).
+
+  * **resolution** - The time in minutes between each check. Allowed values: (1,5,15,30,60). Default is `5`
 
   * **paused** - Whether the check is active or not (defaults to `false`, if not provided). Allowed values (bool): `true`, `false`
 
@@ -269,6 +291,24 @@ The following attributes are exported:
       * **address**: Email address to notify
 
       * **severity**: Severity of this notification. One of HIGH|LOW
+
+### Pingdom Maintenance ###
+
+  * **description** - (Required) The name of the team
+
+  * **from** - (Required) Initial maintenance window start. RFC3339 format time like `2066-01-02T22:00:00+08:00`
+
+  * **to** - (Required) Initial maintenance window end. RFC3339 format time like `2066-01-02T22:00:00+08:00`
+
+  * **effectiveto** - Recurrence end. RFC3339 format time like `2066-01-02T22:00:00+08:00` Default: equal to `to`.
+
+  * **recurrencetype** - Type of recurrence. Allowed values: `none` `day` `week` `month`. Default is `none`
+  
+  * **repeatevery** - Repeat every n-th day/week/month. Default is `0`
+
+  * **tmsids** - Identifiers of transaction checks to assign to the maintenance window - Comma separated Integers
+
+  * **uptimeids** - Identifiers of uptime checks to assign to the maintenance window - Comma separated Integers
 
 ## Develop The Provider ##
 

@@ -4,11 +4,14 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/nordcloud/go-pingdom/pingdom"
 )
+
+const timeFormat = time.RFC3339
 
 func resourcePingdomMaintenance() *schema.Resource {
 	return &schema.Resource{
@@ -25,15 +28,15 @@ func resourcePingdomMaintenance() *schema.Resource {
 				Required: true,
 			},
 			"from": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"to": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"effectiveto": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
 			},
@@ -69,15 +72,27 @@ func maintenanceForResource(d *schema.ResourceData) (*pingdom.MaintenanceWindow,
 	}
 
 	if v, ok := d.GetOk("from"); ok {
-		maintenance.From = int64(v.(int))
+		t, err := time.Parse(timeFormat, v.(string))
+		if err != nil {
+			return nil, err
+		}
+		maintenance.From = t.Unix()
 	}
 
 	if v, ok := d.GetOk("to"); ok {
-		maintenance.To = int64(v.(int))
+		t, err := time.Parse(timeFormat, v.(string))
+		if err != nil {
+			return nil, err
+		}
+		maintenance.To = t.Unix()
 	}
 
 	if v, ok := d.GetOk("effectiveto"); ok {
-		maintenance.EffectiveTo = int64(v.(int))
+		t, err := time.Parse(timeFormat, v.(string))
+		if err != nil {
+			return nil, err
+		}
+		maintenance.EffectiveTo = t.Unix()
 	}
 
 	if v, ok := d.GetOk("recurrencetype"); ok {
@@ -104,15 +119,15 @@ func updateResourceFromMaintenanceResponse(d *schema.ResourceData, m *pingdom.Ma
 		return err
 	}
 
-	if err := d.Set("from", m.From); err != nil {
+	if err := d.Set("from", time.Unix(m.From, 0).Format(timeFormat)); err != nil {
 		return err
 	}
 
-	if err := d.Set("to", m.To); err != nil {
+	if err := d.Set("to", time.Unix(m.To, 0).Format(timeFormat)); err != nil {
 		return err
 	}
 
-	if err := d.Set("effectiveto", m.EffectiveTo); err != nil {
+	if err := d.Set("effectiveto", time.Unix(m.EffectiveTo, 0).Format(timeFormat)); err != nil {
 		return err
 	}
 
