@@ -177,6 +177,28 @@ resource "pingdom_user" "user" {
 }
 ```
 
+**Occurrence**
+
+An occurrence resource usually represents a group of maintenance occurrences, as determined by the triple
+(maintenanceid, effective_from, effective_to). This triple is effectively a query against all existing
+maintenance occurrences. Please note that 'effective_from' and 'effective_to' are different from the attributes
+pair 'from' and 'to' of maintenance/occurrence. The latter are used to specify the start/end within a maintenance
+cycle, while the former are purely query conditions used to retrieve occurrence objects.
+
+It is not possible to import occurrences as they are queries, which does not exist on Pingdom.
+
+'from' and 'to' attributes can be updated, which results in all occurrences matched by the query being
+updated.
+
+```hcl
+
+resource "pingdom_occurrence" "test" {
+    maintenance_id = pingdom_maintenance.test.id
+    
+     
+}
+```
+
 ## Resources ##
 
 ### Pingdom Check ###

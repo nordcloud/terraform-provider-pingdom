@@ -8,6 +8,7 @@ import (
 	"github.com/nordcloud/go-pingdom/pingdom"
 	"github.com/nordcloud/go-pingdom/solarwinds"
 	"log"
+	"time"
 )
 
 func resourcePingdomOccurrences() *schema.Resource {
@@ -23,23 +24,23 @@ func resourcePingdomOccurrences() *schema.Resource {
 				ForceNew: true,
 			},
 			"effective_from": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
 			},
 			"effective_to": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
 			},
 			"from": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: false,
 				Computed: true,
 			},
 			"to": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: false,
 				Computed: true,
@@ -56,6 +57,26 @@ func resourcePingdomOccurrences() *schema.Resource {
 
 type OccurrenceGroup pingdom.ListOccurrenceQuery
 
+func timeParse(timeStr string) (time.Time, error) {
+	return time.Parse(time.RFC3339, timeStr)
+}
+
+func timeFormat(unixTime int64) string {
+	return time.Unix(unixTime, 0).Format(time.RFC3339)
+}
+
+func getTime(attr string, d *schema.ResourceData) (int64, bool, error) {
+	if v, ok := d.GetOk("effective_from"); ok {
+		if t, err := timeParse(v.(string)); err != nil {
+			return 0, false, err
+		} else {
+			return t.Unix(), true, nil
+		}
+	} else {
+		return 0, false, nil
+	}
+}
+
 func NewOccurrenceGroupWithResourceData(d *schema.ResourceData) (*OccurrenceGroup, error) {
 	q := OccurrenceGroup{}
 
@@ -64,12 +85,16 @@ func NewOccurrenceGroupWithResourceData(d *schema.ResourceData) (*OccurrenceGrou
 		q.MaintenanceId = int64(v.(int))
 	}
 
-	if v, ok := d.GetOk("effective_from"); ok {
-		q.From = int64(v.(int))
+	if v, ok, err := getTime("effective_from", d); err != nil {
+		return nil, err
+	} else if ok {
+		q.From = v
 	}
 
-	if v, ok := d.GetOk("effective_to"); ok {
-		q.To = int64(v.(int))
+	if v, ok, err := getTime("effective_to", d); err != nil {
+		return nil, err
+	} else if ok {
+		q.To = v
 	}
 
 	return &q, nil
@@ -90,10 +115,10 @@ func (g *OccurrenceGroup) Populate(client *pingdom.Client, d *schema.ResourceDat
 		return err
 	} else {
 		for k, v := range map[string]interface{}{
-			"from":           sample.From,
-			"to":             sample.To,
-			"effective_from": g.From,
-			"effective_to":   g.To,
+			"from":           timeFormat(sample.From),
+			"to":             timeFormat(sample.To),
+			"effective_from": timeFormat(g.From),
+			"effective_to":   timeFormat(g.To),
 			"maintenance_id": g.MaintenanceId,
 			"size":           size,
 		} {
@@ -195,12 +220,47 @@ func resourcePingdomOccurrencesCreate(ctx context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 
+	var from, to int64
+	if v, ok, err := getTime("from", d); err != nil {
+		return diag.FromErr(err)
+	} else if ok {
+		from = v
+	}
+	if v, ok, err := getTime("to", d); err != nil {
+		return diag.FromErr(err)
+	} else if ok {
+		to = v
+	}
+
+	if (from == 0 && to != 0) || (from != 0 && to == 0) {
+		return diag.Errorf("'from' and 'to' must be provided at the same time, current values are from: %d, to: %d", from, to)
+	}
+
 	log.Printf("[DEBUG] Retrieve occurrences with query: %#v", g)
 	if err := g.Populate(client, d); err != nil {
 		return diag.FromErr(err)
 	}
 
 	d.SetId(g.Id())
+
+	var newFrom, newTo int64
+	if v, ok, err := getTime("from", d); err != nil {
+		return diag.FromErr(err)
+	} else if ok {
+		newFrom = v
+	}
+	if v, ok, err := getTime("to", d); err != nil {
+		return diag.FromErr(err)
+	} else if ok {
+		newTo = v
+	}
+
+	if from != 0 && to != 0 && (from != newFrom || to != newTo) {
+		log.Printf("User specifies new 'from' and 'to' upon creation, from: %d, to: %d", from, to)
+		if err := g.Update(client, from, to); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	return nil
 }
@@ -241,8 +301,10 @@ func resourcePingdomOccurrencesUpdate(ctx context.Context, d *schema.ResourceDat
 
 	if d.HasChanges("from") || d.HasChanges("to") {
 		var from, to int64
-		if v, ok := d.GetOk("from"); ok {
-			from = int64(v.(int))
+		if v, ok, err := getTime("from", d); err != nil {
+			return diag.FromErr(err)
+		} else if ok {
+			from = v
 		}
 		if v, ok := d.GetOk("to"); ok {
 			to = int64(v.(int))
