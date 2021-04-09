@@ -29,8 +29,8 @@ func TestAccResourcePingdomMaintenance_basic(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckPingdomResourceID(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "description", description),
-					resource.TestCheckResourceAttr(resourceName, "from", "2717878696"),
-					resource.TestCheckResourceAttr(resourceName, "to", "2718878696"),
+					resource.TestCheckResourceAttr(resourceName, "from", "2066-01-02T22:00:00+08:00"),
+					resource.TestCheckResourceAttr(resourceName, "to", "2066-01-02T23:00:00+08:00"),
 				),
 			},
 			{
@@ -43,9 +43,9 @@ func TestAccResourcePingdomMaintenance_basic(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					testAccCheckPingdomResourceID(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "description", updatedDescription),
-					resource.TestCheckResourceAttr(resourceName, "from", "2717878693"),
-					resource.TestCheckResourceAttr(resourceName, "to", "2718878693"),
-					resource.TestCheckResourceAttr(resourceName, "effectiveto", "2718978693"),
+					resource.TestCheckResourceAttr(resourceName, "from", "2066-01-05T22:10:00+08:00"),
+					resource.TestCheckResourceAttr(resourceName, "to", "2066-01-05T23:59:00+08:00"),
+					resource.TestCheckResourceAttr(resourceName, "effectiveto", "2088-10-22T06:07:08+08:00"),
 					resource.TestCheckResourceAttr(resourceName, "recurrencetype", "week"),
 					resource.TestCheckResourceAttr(resourceName, "repeatevery", "4"),
 					resource.TestCheckResourceAttr(resourceName, "uptimeids.#", "1"),
@@ -88,8 +88,8 @@ func testAccResourcePingdomMaintenanceConfig(name string) string {
 	return fmt.Sprintf(`
 resource "pingdom_maintenance" "test" {
 	description = "%s"
-	from        = 2717878696
-	to          = 2718878696
+	from        = "2066-01-02T22:00:00+08:00"
+	to          = "2066-01-02T23:00:00+08:00"
 }
 `, name)
 }
@@ -104,9 +104,9 @@ resource "pingdom_check" "test" {
 
 resource "pingdom_maintenance" "test" {
 	description    = "%s"
-	from           = 2717878693
-	to             = 2718878693
-	effectiveto    = 2718978693
+	from           = "2066-01-05T22:10:00+08:00"
+	to             = "2066-01-05T23:59:00+08:00"
+	effectiveto    = "2088-10-22T06:07:08+08:00"
 	recurrencetype = "week"
 	repeatevery    = 4
 	uptimeids      = [pingdom_check.test.id]
