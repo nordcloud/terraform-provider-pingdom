@@ -16,9 +16,10 @@ func Provider() *schema.Provider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"pingdom_check":      resourcePingdomCheck(),
-			"pingdom_team":       resourcePingdomTeam(),
-			"pingdom_contact":    resourcePingdomContact(),
+			"pingdom_check":       resourcePingdomCheck(),
+			"pingdom_team":        resourcePingdomTeam(),
+			"pingdom_contact":     resourcePingdomContact(),
+			"pingdom_maintenance": resourcePingdomMaintenance(),
 			"pingdom_user":       resourceSolarwindsUser(),
 			"pingdom_occurrence": resourcePingdomOccurrences(),
 		},
