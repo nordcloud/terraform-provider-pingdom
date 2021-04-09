@@ -210,14 +210,16 @@ cycle, while the former are purely query conditions used to retrieve occurrence 
 It is not possible to import occurrences as they are queries, which does not exist on Pingdom.
 
 'from' and 'to' attributes can be updated, which results in all occurrences matched by the query being
-updated.
+updated. In other words, all occurrences matched by a single resource will share the same values for `from` and `to`.
 
 ```hcl
 
 resource "pingdom_occurrence" "test" {
     maintenance_id = pingdom_maintenance.test.id
-    
-     
+    effective_from = pingdom_maintenance.test.from
+    effective_to = pingdom_maintenance.test.effectiveto
+    from = pingdom_maintenance.test.from
+    to = "2021-04-10T22:00:00+08:00"
 }
 ```
 
@@ -353,6 +355,25 @@ The following attributes are exported:
   * **tmsids** - Identifiers of transaction checks to assign to the maintenance window - Comma separated Integers
 
   * **uptimeids** - Identifiers of uptime checks to assign to the maintenance window - Comma separated Integers
+
+### Pingdom Maintenance Occurrence ###
+
+* **maintenance_id** - (Required) The id of the maintenance which the occurrence belongs to, 
+  please use references to maintenance resources.
+
+* **effective_from** - (Required) The start time of the occurrence query, RFC3339 format time like `2066-01-02T22:00:00+08:00`. 
+  If not specified, the default value is the current time, which means only future occurrences will be returned. This is
+  usually desired because it only makes sense to manipulate future occurrences.
+  NOTE: this is for query only, not related to the actual start time of the maintenance window.
+
+* **effective_to** - (Required) The end time of the occurrence query, RFC3339 format time like `2066-01-02T22:00:00+08:00`. 
+  NOTE: this is for query only, not related to the actual end time of the maintenance window.
+
+* **from** - The start time of an occurrence, RFC3339 format time like `2066-01-02T22:00:00+08:00`.
+
+* **to** - The end time of an occurrence, RFC3339 format time like `2066-01-02T22:00:00+08:00`.
+
+* **size** - The total number of occurrences match the current query. This just serves as read-only information.
 
 ### Pingdom User ###
 

@@ -2,16 +2,12 @@ package pingdom
 
 import (
 	"context"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/nordcloud/go-pingdom/pingdom"
+	"strconv"
+	"strings"
 )
-
-const timeFormat = time.RFC3339
 
 func resourcePingdomMaintenance() *schema.Resource {
 	return &schema.Resource{
@@ -71,28 +67,22 @@ func maintenanceForResource(d *schema.ResourceData) (*pingdom.MaintenanceWindow,
 		maintenance.Description = v.(string)
 	}
 
-	if v, ok := d.GetOk("from"); ok {
-		t, err := time.Parse(timeFormat, v.(string))
-		if err != nil {
-			return nil, err
-		}
-		maintenance.From = t.Unix()
+	if v, ok, err := getTime("from", d); err != nil {
+		return nil, err
+	} else if ok {
+		maintenance.From = v
 	}
 
-	if v, ok := d.GetOk("to"); ok {
-		t, err := time.Parse(timeFormat, v.(string))
-		if err != nil {
-			return nil, err
-		}
-		maintenance.To = t.Unix()
+	if v, ok, err := getTime("to", d); err != nil {
+		return nil, err
+	} else if ok {
+		maintenance.To = v
 	}
 
-	if v, ok := d.GetOk("effectiveto"); ok {
-		t, err := time.Parse(timeFormat, v.(string))
-		if err != nil {
-			return nil, err
-		}
-		maintenance.EffectiveTo = t.Unix()
+	if v, ok, err := getTime("effectiveto", d); err != nil {
+		return nil, err
+	} else if ok {
+		maintenance.EffectiveTo = v
 	}
 
 	if v, ok := d.GetOk("recurrencetype"); ok {
@@ -119,15 +109,15 @@ func updateResourceFromMaintenanceResponse(d *schema.ResourceData, m *pingdom.Ma
 		return err
 	}
 
-	if err := d.Set("from", time.Unix(m.From, 0).Format(timeFormat)); err != nil {
+	if err := d.Set("from", timeFormat(m.From)); err != nil {
 		return err
 	}
 
-	if err := d.Set("to", time.Unix(m.To, 0).Format(timeFormat)); err != nil {
+	if err := d.Set("to", timeFormat(m.To)); err != nil {
 		return err
 	}
 
-	if err := d.Set("effectiveto", time.Unix(m.EffectiveTo, 0).Format(timeFormat)); err != nil {
+	if err := d.Set("effectiveto", timeFormat(m.EffectiveTo)); err != nil {
 		return err
 	}
 

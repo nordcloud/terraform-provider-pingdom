@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/nordcloud/go-pingdom/pingdom"
 	"github.com/nordcloud/go-pingdom/solarwinds"
-	"html/template"
 	"strconv"
 	"testing"
+	"text/template"
 	"time"
 )
 
@@ -18,16 +17,24 @@ func TestAccOccurrence_basic(t *testing.T) {
 	maintenance := getMaintenance(time.Duration(occurrenceNum))
 	resourceName := "pingdom_occurrence.test"
 
+	var from, to string
+	from = maintenance["From"]
+	if v, err := timeParse(maintenance["To"]); err != nil {
+		t.Fatal(err)
+	} else {
+		to = timeFormat(v.Add(1 * time.Hour).Unix())
+	}
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckOccurrenceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOccurrence_basicConfig(*maintenance, 0, 0),
+				Config: testAccOccurrence_basicConfig(maintenance, from, to),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(maintenance.From, 10)),
-					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(maintenance.To, 10)),
+					resource.TestCheckResourceAttr(resourceName, "from", from),
+					resource.TestCheckResourceAttr(resourceName, "to", to),
 					resource.TestCheckResourceAttr(resourceName, "size", strconv.Itoa(occurrenceNum+1)),
 				),
 			},
@@ -40,7 +47,13 @@ func TestAccOccurrence_update(t *testing.T) {
 	maintenance := getMaintenance(time.Duration(occurrenceNum))
 	resourceName := "pingdom_occurrence.test"
 
-	from, to := maintenance.From, time.Unix(maintenance.To, 0).Add(1*time.Hour).Unix()
+	var from, to string
+	from = maintenance["From"]
+	if v, err := timeParse(maintenance["To"]); err != nil {
+		t.Fatal(err)
+	} else {
+		to = timeFormat(v.Add(1 * time.Hour).Unix())
+	}
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -48,18 +61,18 @@ func TestAccOccurrence_update(t *testing.T) {
 		CheckDestroy: testAccCheckOccurrenceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOccurrence_basicConfig(*maintenance, 0, 0),
+				Config: testAccOccurrence_basicConfig(maintenance, "", ""),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(maintenance.From, 10)),
-					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(maintenance.To, 10)),
+					resource.TestCheckResourceAttr(resourceName, "from", maintenance["From"]),
+					resource.TestCheckResourceAttr(resourceName, "to", maintenance["To"]),
 					resource.TestCheckResourceAttr(resourceName, "size", strconv.Itoa(occurrenceNum+1)),
 				),
 			},
 			{
-				Config: testAccOccurrence_basicConfig(*maintenance, from, to),
+				Config: testAccOccurrence_basicConfig(maintenance, from, to),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "from", strconv.FormatInt(from, 10)),
-					resource.TestCheckResourceAttr(resourceName, "to", strconv.FormatInt(to, 10)),
+					resource.TestCheckResourceAttr(resourceName, "from", from),
+					resource.TestCheckResourceAttr(resourceName, "to", to),
 					resource.TestCheckResourceAttr(resourceName, "size", strconv.Itoa(occurrenceNum+1)),
 				),
 			},
@@ -81,15 +94,15 @@ func testAccCheckOccurrenceDestroy(s *terraform.State) error {
 		} else {
 			g.MaintenanceId = v
 		}
-		if v, err := strconv.ParseInt(rs.Primary.Attributes["effective_from"], 10, 64); err != nil {
+		if v, err := timeParse(rs.Primary.Attributes["effective_from"]); err != nil {
 			return err
 		} else {
-			g.From = v
+			g.From = v.Unix()
 		}
-		if v, err := strconv.ParseInt(rs.Primary.Attributes["effective_to"], 10, 64); err != nil {
+		if v, err := timeParse(rs.Primary.Attributes["effective_to"]); err != nil {
 			return err
 		} else {
-			g.To = v
+			g.To = v.Unix()
 		}
 
 		if size, err := g.Size(client); err != nil {
@@ -101,30 +114,28 @@ func testAccCheckOccurrenceDestroy(s *terraform.State) error {
 	return nil
 }
 
-func getMaintenance(occurrenceNum time.Duration) *pingdom.MaintenanceWindow {
+func getMaintenance(occurrenceNum time.Duration) map[string]string {
 	now := time.Now()
 	from := now.Add(1 * time.Hour)
 	to := from.Add(1 * time.Hour)
-	return &pingdom.MaintenanceWindow{
-		Description:    "terraform resource test - " + solarwinds.RandString(10),
-		From:           from.Unix(),
-		To:             to.Unix(),
-		RecurrenceType: "day",
-		RepeatEvery:    1,
-		EffectiveTo:    to.Add(occurrenceNum * 24 * time.Hour).Unix(),
+	return map[string]string{
+		"Description": "terraform resource test - " + solarwinds.RandString(10),
+		"From":        timeFormat(from.Unix()),
+		"To":          timeFormat(to.Unix()),
+		"EffectiveTo": timeFormat(to.Add(occurrenceNum * 24 * time.Hour).Unix()),
 	}
 }
 
-func testAccOccurrence_basicConfig(maintenance pingdom.MaintenanceWindow, from int64, to int64) string {
+func testAccOccurrence_basicConfig(maintenance map[string]string, from string, to string) string {
 	t := template.Must(template.New("basicConfig").Parse(`
 {{with .maintenance}}
 resource "pingdom_maintenance" "test" {
 	description = "{{.Description}}"
-	from = {{.From}}
-	to = {{.To}}
+	from = "{{.From}}"
+	to = "{{.To}}"
 	recurrencetype = "day"
 	repeatevery = 1
-	effectiveto = {{.EffectiveTo}}
+	effectiveto = "{{.EffectiveTo}}"
 }
 {{end}}
 
@@ -133,10 +144,10 @@ resource "pingdom_occurrence" "test" {
 	effective_from = pingdom_maintenance.test.from
 	effective_to = pingdom_maintenance.test.effectiveto
 	{{if .from}}
-	from = {{.from}}
+	from = "{{.from}}"
 	{{end}}
 	{{if .to}}
-	to = {{.to}}
+	to = "{{.to}}"
 	{{end}}
 }
 `))

@@ -66,7 +66,7 @@ func timeFormat(unixTime int64) string {
 }
 
 func getTime(attr string, d *schema.ResourceData) (int64, bool, error) {
-	if v, ok := d.GetOk("effective_from"); ok {
+	if v, ok := d.GetOk(attr); ok {
 		if t, err := timeParse(v.(string)); err != nil {
 			return 0, false, err
 		} else {
@@ -260,6 +260,9 @@ func resourcePingdomOccurrencesCreate(ctx context.Context, d *schema.ResourceDat
 		if err := g.Update(client, from, to); err != nil {
 			return diag.FromErr(err)
 		}
+		if err := g.Populate(client, d); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
@@ -306,8 +309,10 @@ func resourcePingdomOccurrencesUpdate(ctx context.Context, d *schema.ResourceDat
 		} else if ok {
 			from = v
 		}
-		if v, ok := d.GetOk("to"); ok {
-			to = int64(v.(int))
+		if v, ok, err := getTime("to", d); err != nil {
+			return diag.FromErr(err)
+		} else if ok {
+			to = v
 		}
 
 		if from == 0 || to == 0 {
