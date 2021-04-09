@@ -6,9 +6,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/nordcloud/go-pingdom/pingdom"
+	"github.com/nordcloud/go-pingdom/solarwinds"
 	"log"
-	"strconv"
-	"strings"
 )
 
 func resourcePingdomOccurrences() *schema.Resource {
@@ -23,15 +22,33 @@ func resourcePingdomOccurrences() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			"from": {
+			"effective_from": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: false,
 			},
-			"to": {
+			"effective_to": {
 				Type:     schema.TypeInt,
 				Required: true,
 				ForceNew: false,
+			},
+			"from": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: false,
+				Computed: true,
+			},
+			"to": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: false,
+				Computed: true,
+			},
+			"size": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: false,
+				Computed: true,
 			},
 		},
 	}
@@ -47,43 +64,21 @@ func NewOccurrenceGroupWithResourceData(d *schema.ResourceData) (*OccurrenceGrou
 		q.MaintenanceId = int64(v.(int))
 	}
 
-	if v, ok := d.GetOk("from"); ok {
+	if v, ok := d.GetOk("effective_from"); ok {
 		q.From = int64(v.(int))
 	}
 
-	if v, ok := d.GetOk("to"); ok {
+	if v, ok := d.GetOk("effective_to"); ok {
 		q.To = int64(v.(int))
 	}
 
 	return &q, nil
 }
 
-func NewOccurrenceGroupWithId(id string) (*OccurrenceGroup, error) {
-	tokens := strings.Split(id, "-")
-	if len(tokens) != 3 {
-		return nil, fmt.Errorf("invalid id %s, not enough tokens", id)
-	}
-	g := OccurrenceGroup{}
-	if i, err := strconv.ParseInt(tokens[0], 10, 64); err != nil {
-		return nil, err
-	} else {
-		g.MaintenanceId = i
-	}
-	if i, err := strconv.ParseInt(tokens[1], 10, 64); err != nil {
-		return nil, err
-	} else {
-		g.From = i
-	}
-	if i, err := strconv.ParseInt(tokens[2], 10, 64); err != nil {
-		return nil, err
-	} else {
-		g.To = i
-	}
-	return &g, nil
-}
-
+// OccurrenceGroup is essentially a query against Maintenance Occurrence. The result of query can overlap,
+// so there is no unique resource id for queries on the Pingdom side.
 func (g *OccurrenceGroup) Id() string {
-	return fmt.Sprintf("%d-%d-%d", g.MaintenanceId, g.From, g.To)
+	return solarwinds.RandString(32)
 }
 
 func (g *OccurrenceGroup) List(client *pingdom.Client) ([]pingdom.Occurrence, error) {
@@ -91,27 +86,33 @@ func (g *OccurrenceGroup) List(client *pingdom.Client) ([]pingdom.Occurrence, er
 }
 
 func (g *OccurrenceGroup) Populate(client *pingdom.Client, d *schema.ResourceData) error {
-	if sample, err := g.Sample(client); err != nil {
+	if sample, size, err := g.Sample(client); err != nil {
 		return err
 	} else {
-		if err = d.Set("from", sample.From); err != nil {
-			return err
-		}
-		if err = d.Set("to", sample.To); err != nil {
-			return err
+		for k, v := range map[string]interface{}{
+			"from":           sample.From,
+			"to":             sample.To,
+			"effective_from": g.From,
+			"effective_to":   g.To,
+			"maintenance_id": g.MaintenanceId,
+			"size":           size,
+		} {
+			if err = d.Set(k, v); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func (g *OccurrenceGroup) Sample(client *pingdom.Client) (*pingdom.Occurrence, error) {
+func (g *OccurrenceGroup) Sample(client *pingdom.Client) (*pingdom.Occurrence, int, error) {
 	occurrences, err := g.List(client)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	} else if len(occurrences) == 0 {
-		return nil, fmt.Errorf("there are no occurrences matching query: %#v", g)
+		return nil, 0, fmt.Errorf("there are no occurrences matching query: %#v", g)
 	} else {
-		return &occurrences[0], nil
+		return &occurrences[0], len(occurrences), nil
 	}
 }
 
@@ -134,10 +135,10 @@ func (g *OccurrenceGroup) MustExists(client *pingdom.Client) error {
 	}
 }
 
-func (g *OccurrenceGroup) Update(client *pingdom.Client, update OccurrenceGroup) error {
+func (g *OccurrenceGroup) Update(client *pingdom.Client, from int64, to int64) error {
 	occurrenceUpdate := pingdom.Occurrence{
-		From: update.From,
-		To:   update.To,
+		From: from,
+		To:   to,
 	}
 	return g.groupOp(client, func(occurrence pingdom.Occurrence) (interface{}, error) {
 		return client.Occurrences.Update(occurrence.Id, occurrenceUpdate)
@@ -207,39 +208,62 @@ func resourcePingdomOccurrencesCreate(ctx context.Context, d *schema.ResourceDat
 func resourcePingdomOccurrencesRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Clients).Pingdom
 
-	id := d.Id()
-	g, err := NewOccurrenceGroupWithId(id)
+	g, err := NewOccurrenceGroupWithResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
+	log.Printf("[DEBUG] Retrieve occurrences with query: %#v", g)
 	if err := g.Populate(client, d); err != nil {
 		return diag.FromErr(err)
 	}
+
 	return nil
 }
 
 func resourcePingdomOccurrencesUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Clients).Pingdom
 
-	id := d.Id()
-	occurrence, err := NewOccurrenceGroupWithId(id)
+	g, err := NewOccurrenceGroupWithResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	update, err := NewOccurrenceGroupWithResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
+	var updated bool
+
+	if d.HasChanges("effective_from") || d.HasChanges("effective_to") {
+		log.Printf("[DEBUG] Retrieve occurrences with query: %#v", g)
+		if err := g.Populate(client, d); err != nil {
+			return diag.FromErr(err)
+		}
+		updated = true
 	}
 
-	log.Printf("[DEBUG] Occurrence update configuration: %#v", update)
+	if d.HasChanges("from") || d.HasChanges("to") {
+		var from, to int64
+		if v, ok := d.GetOk("from"); ok {
+			from = int64(v.(int))
+		}
+		if v, ok := d.GetOk("to"); ok {
+			to = int64(v.(int))
+		}
 
-	if err := occurrence.Update(client, *update); err != nil {
-		return diag.FromErr(err)
+		if from == 0 || to == 0 {
+			return diag.Errorf("'from' and 'to' must be provided at the same time, current values are from: %d, to: %d", from, to)
+		}
+
+		log.Printf("[DEBUG] Occurrence update from: %d, to: %d", from, to)
+
+		if err := g.Update(client, from, to); err != nil {
+			return diag.FromErr(err)
+		}
+		updated = true
 	}
 
-	if err := occurrence.Populate(client, d); err != nil {
-		return diag.FromErr(err)
+	if updated {
+		if err := g.Populate(client, d); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return nil
@@ -248,7 +272,7 @@ func resourcePingdomOccurrencesUpdate(ctx context.Context, d *schema.ResourceDat
 func resourcePingdomOccurrencesDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Clients).Pingdom
 
-	occurrence, err := NewOccurrenceGroupWithId(d.Id())
+	occurrence, err := NewOccurrenceGroupWithResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
