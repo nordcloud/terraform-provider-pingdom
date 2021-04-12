@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/nordcloud/go-pingdom/pingdom"
+	"github.com/nordcloud/go-pingdom/pingdomext"
 )
 
 // Config respresents the client configuration
@@ -18,6 +19,7 @@ type Config struct {
 
 type Clients struct {
 	Pingdom    *pingdom.Client
+	PingdomExt *pingdomext.Client
 	Solarwinds *solarwinds.Client
 }
 
@@ -45,8 +47,19 @@ func (c *Config) Client() (*Clients, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pingdomClientExt, err := pingdomext.NewClientWithConfig(pingdomext.ClientConfig{
+		Username: c.SolarwindsUser,
+		Password: c.SolarwindsPassword,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &Clients{
 		Pingdom:    pingdomClient,
+		PingdomExt: pingdomClientExt,
 		Solarwinds: solarwindsClient,
 	}, nil
 }
