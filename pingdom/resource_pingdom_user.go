@@ -2,6 +2,7 @@ package pingdom
 
 import (
 	"context"
+	"errors"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -183,8 +184,9 @@ func resourceSolarwindsUserDelete(ctx context.Context, d *schema.ResourceData, m
 	id := d.Id()
 	err := resource.RetryContext(ctx, DeleteUserRetryTimeout, func() *resource.RetryError {
 		if err := client.UserService.Delete(id); err != nil {
-			clientErr := err.(*solarwinds.ClientError)
-			if solarwinds.ErrCodeDeleteActiveUserException == clientErr.StatusCode {
+			var clientErr *solarwinds.ClientError
+			ok := errors.As(err, &clientErr)
+			if ok && solarwinds.ErrCodeDeleteActiveUserException == clientErr.StatusCode {
 				return resource.NonRetryableError(err)
 			}
 			return resource.RetryableError(err)

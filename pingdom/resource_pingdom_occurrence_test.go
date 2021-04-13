@@ -31,7 +31,7 @@ func TestAccOccurrence_basic(t *testing.T) {
 		CheckDestroy: testAccCheckOccurrenceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOccurrence_basicConfig(maintenance, from, to),
+				Config: testAccOccurrenceBasicConfig(maintenance, from, to),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "from", from),
 					resource.TestCheckResourceAttr(resourceName, "to", to),
@@ -61,7 +61,7 @@ func TestAccOccurrence_update(t *testing.T) {
 		CheckDestroy: testAccCheckOccurrenceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccOccurrence_basicConfig(maintenance, "", ""),
+				Config: testAccOccurrenceBasicConfig(maintenance, "", ""),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "from", maintenance["From"]),
 					resource.TestCheckResourceAttr(resourceName, "to", maintenance["To"]),
@@ -69,7 +69,7 @@ func TestAccOccurrence_update(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccOccurrence_basicConfig(maintenance, from, to),
+				Config: testAccOccurrenceBasicConfig(maintenance, from, to),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "from", from),
 					resource.TestCheckResourceAttr(resourceName, "to", to),
@@ -89,21 +89,23 @@ func testAccCheckOccurrenceDestroy(s *terraform.State) error {
 		}
 
 		g := OccurrenceGroup{}
-		if v, err := strconv.ParseInt(rs.Primary.Attributes["maintenance_id"], 10, 64); err != nil {
+		v, err := strconv.ParseInt(rs.Primary.Attributes["maintenance_id"], 10, 64)
+		if err != nil {
 			return err
-		} else {
-			g.MaintenanceId = v
 		}
-		if v, err := timeParse(rs.Primary.Attributes["effective_from"]); err != nil {
+		g.MaintenanceId = v
+
+		t, err := timeParse(rs.Primary.Attributes["effective_from"])
+		if err != nil {
 			return err
-		} else {
-			g.From = v.Unix()
 		}
-		if v, err := timeParse(rs.Primary.Attributes["effective_to"]); err != nil {
+		g.From = t.Unix()
+
+		t, err = timeParse(rs.Primary.Attributes["effective_to"])
+		if err != nil {
 			return err
-		} else {
-			g.To = v.Unix()
 		}
+		g.To = t.Unix()
 
 		if size, err := g.Size(client); err != nil {
 			return err
@@ -126,7 +128,7 @@ func getMaintenance(occurrenceNum time.Duration) map[string]string {
 	}
 }
 
-func testAccOccurrence_basicConfig(maintenance map[string]string, from string, to string) string {
+func testAccOccurrenceBasicConfig(maintenance map[string]string, from string, to string) string {
 	t := template.Must(template.New("basicConfig").Parse(`
 {{with .maintenance}}
 resource "pingdom_maintenance" "test" {

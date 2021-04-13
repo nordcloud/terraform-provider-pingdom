@@ -31,7 +31,7 @@ func TestAccUser_basic(t *testing.T) {
 		CheckDestroy: testAccCheckUserDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUser_basicConfig(user),
+				Config: testAccUserBasicConfig(user),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUserExist(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "role", "MEMBER"),
@@ -75,7 +75,7 @@ func TestAccUser_update(t *testing.T) {
 		CheckDestroy: testAccCheckUserDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUser_basicConfig(user),
+				Config: testAccUserBasicConfig(user),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUserExist(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "role", user.Role),
@@ -85,7 +85,7 @@ func TestAccUser_update(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccUser_basicConfig(userUpdate),
+				Config: testAccUserBasicConfig(userUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckUserExist(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "role", userUpdate.Role),
@@ -153,7 +153,7 @@ func testAccCheckUserExist(n string) resource.TestCheckFunc {
 	}
 }
 
-func testAccUser_basicConfig(user solarwinds.User) string {
+func testAccUserBasicConfig(user solarwinds.User) string {
 	t := template.Must(template.New("basicConfig").Parse(`
 resource "pingdom_user" "test" {
 	email = "{{.Email}}"

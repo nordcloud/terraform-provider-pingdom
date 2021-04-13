@@ -66,15 +66,15 @@ func timeFormat(unixTime int64) string {
 }
 
 func getTime(attr string, d *schema.ResourceData) (int64, bool, error) {
-	if v, ok := d.GetOk(attr); ok {
-		if t, err := timeParse(v.(string)); err != nil {
+	v, ok := d.GetOk(attr)
+	if ok {
+		t, err := timeParse(v.(string))
+		if err != nil {
 			return 0, false, err
-		} else {
-			return t.Unix(), true, nil
 		}
-	} else {
-		return 0, false, nil
+		return t.Unix(), true, nil
 	}
+	return 0, false, nil
 }
 
 func NewOccurrenceGroupWithResourceData(d *schema.ResourceData) (*OccurrenceGroup, error) {
@@ -100,9 +100,9 @@ func NewOccurrenceGroupWithResourceData(d *schema.ResourceData) (*OccurrenceGrou
 	return &q, nil
 }
 
-// OccurrenceGroup is essentially a query against Maintenance Occurrence. The result of query can overlap,
-// so there is no unique resource id for queries on the Pingdom side.
-func (g *OccurrenceGroup) Id() string {
+// ID returns unique id for an OccurrenceGroup. An OccurrenceGroup is essentially a query against Maintenance Occurrence.
+// The result of query can overlap, so there is no unique resource id for queries on the Pingdom side.
+func (g *OccurrenceGroup) ID() string {
 	return solarwinds.RandString(32)
 }
 
@@ -111,20 +111,20 @@ func (g *OccurrenceGroup) List(client *pingdom.Client) ([]pingdom.Occurrence, er
 }
 
 func (g *OccurrenceGroup) Populate(client *pingdom.Client, d *schema.ResourceData) error {
-	if sample, size, err := g.Sample(client); err != nil {
+	sample, size, err := g.Sample(client)
+	if err != nil {
 		return err
-	} else {
-		for k, v := range map[string]interface{}{
-			"from":           timeFormat(sample.From),
-			"to":             timeFormat(sample.To),
-			"effective_from": timeFormat(g.From),
-			"effective_to":   timeFormat(g.To),
-			"maintenance_id": g.MaintenanceId,
-			"size":           size,
-		} {
-			if err = d.Set(k, v); err != nil {
-				return err
-			}
+	}
+	for k, v := range map[string]interface{}{
+		"from":           timeFormat(sample.From),
+		"to":             timeFormat(sample.To),
+		"effective_from": timeFormat(g.From),
+		"effective_to":   timeFormat(g.To),
+		"maintenance_id": g.MaintenanceId,
+		"size":           size,
+	} {
+		if err = d.Set(k, v); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -134,11 +134,11 @@ func (g *OccurrenceGroup) Sample(client *pingdom.Client) (*pingdom.Occurrence, i
 	occurrences, err := g.List(client)
 	if err != nil {
 		return nil, 0, err
-	} else if len(occurrences) == 0 {
-		return nil, 0, fmt.Errorf("there are no occurrences matching query: %#v", g)
-	} else {
-		return &occurrences[0], len(occurrences), nil
 	}
+	if len(occurrences) == 0 {
+		return nil, 0, fmt.Errorf("there are no occurrences matching query: %#v", g)
+	}
+	return &occurrences[0], len(occurrences), nil
 }
 
 func (g *OccurrenceGroup) Size(client *pingdom.Client) (int, error) {
@@ -151,13 +151,14 @@ func (g *OccurrenceGroup) Size(client *pingdom.Client) (int, error) {
 }
 
 func (g *OccurrenceGroup) MustExists(client *pingdom.Client) error {
-	if size, err := g.Size(client); err != nil {
+	size, err := g.Size(client)
+	if err != nil {
 		return err
-	} else if size == 0 {
-		return fmt.Errorf("there are no occurrences matching query: %#v", g)
-	} else {
-		return nil
 	}
+	if size == 0 {
+		return fmt.Errorf("there are no occurrences matching query: %#v", g)
+	}
+	return nil
 }
 
 func (g *OccurrenceGroup) Update(client *pingdom.Client, from int64, to int64) error {
@@ -203,7 +204,7 @@ func (g *OccurrenceGroup) groupOp(client *pingdom.Client, op func(occurrence pin
 			close(cancelChan)
 			return err
 		} else {
-			count += 1
+			count++
 		}
 		if expectTotal == count {
 			break
@@ -241,7 +242,7 @@ func resourcePingdomOccurrencesCreate(ctx context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 
-	d.SetId(g.Id())
+	d.SetId(g.ID())
 
 	var newFrom, newTo int64
 	if v, ok, err := getTime("from", d); err != nil {
