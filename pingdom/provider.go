@@ -38,6 +38,7 @@ func Provider() *schema.Provider {
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"pingdom_contact":      dataSourcePingdomContact(),
+			"pingdom_contacts":     dataSourcePingdomContacts(),
 			"pingdom_team":         dataSourcePingdomTeam(),
 			"pingdom_integration":  dataSourcePingdomIntegration(),
 			"pingdom_integrations": dataSourcePingdomIntegrations(),
