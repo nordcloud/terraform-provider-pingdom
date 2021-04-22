@@ -35,6 +35,11 @@ func resourceSolarwindsUser() *schema.Resource {
 				Required: true,
 				ForceNew: false,
 			},
+			"active_user_id": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				ForceNew: false,
+			},
 			"products": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -66,6 +71,10 @@ func userFromResource(d *schema.ResourceData) (*solarwinds.User, error) {
 
 	if v, ok := d.GetOk("role"); ok {
 		user.Role = v.(string)
+	}
+
+	if v, ok := d.GetOk("active_user_id"); ok {
+		user.UserId = v.(uint64)
 	}
 
 	if v, ok := d.GetOk("products"); ok {
@@ -132,9 +141,10 @@ func resourceSolarwindsUserRead(ctx context.Context, d *schema.ResourceData, met
 	}
 
 	for k, v := range map[string]interface{}{
-		"email":    user.Email,
-		"role":     user.Role,
-		"products": flattenUserProducts(user.Products),
+		"email":          user.Email,
+		"role":           user.Role,
+		"active_user_id": user.UserId,
+		"products":       flattenUserProducts(user.Products),
 	} {
 		if err := d.Set(k, v); err != nil {
 			return diag.FromErr(err)

@@ -393,7 +393,7 @@ The following attributes are exported:
 * **role**: The role in the Solarwinds adminpanel, possible values: "MEMBER", "ADMIN"
 * **products**: Permission to each application, the list must be comprehensive. The user will have access to application listed only
     * **name**: The name of the application, possible values: "APPOPTICS", "PINGDOM", "LOGGLY", "PAPERTRAIL"
-    * **role**: The permission, possible values: "ADMIN", "OWNER", "MEMBER", "NO_ACCESS"
+    * **role**: The permission, allowed values may vary for each service. For Pingdom, possible values: "ADMIN", "OWNER", "VIEWER", "EDITOR", "NO_ACCESS"
     
 ### Pingdom Integration ###
 
