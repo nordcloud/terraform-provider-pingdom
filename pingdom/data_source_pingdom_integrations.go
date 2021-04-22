@@ -39,7 +39,7 @@ func dataSourcePingdomIntegrationsRead(ctx context.Context, d *schema.ResourceDa
 	var names []string
 	for _, integration := range integrations {
 		ids = append(ids, integration.ID)
-		names = append(names, integration.Name)
+		names = append(names, integration.UserData["name"])
 	}
 
 	d.SetId(fmt.Sprintf("%d", len(integrations)))
