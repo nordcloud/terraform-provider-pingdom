@@ -22,6 +22,10 @@ func Provider() *schema.Provider {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"solarwinds_org_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"pingdom_check":       resourcePingdomCheck(),
@@ -34,7 +38,10 @@ func Provider() *schema.Provider {
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"pingdom_contact":      dataSourcePingdomContact(),
+			"pingdom_contacts":     dataSourcePingdomContacts(),
 			"pingdom_team":         dataSourcePingdomTeam(),
+			"pingdom_integration":  dataSourcePingdomIntegration(),
+			"pingdom_integrations": dataSourcePingdomIntegrations(),
 			"pingdom_active_users": dataSourceSolarwindsActiveUsers(),
 		},
 		ConfigureFunc: providerConfigure,
