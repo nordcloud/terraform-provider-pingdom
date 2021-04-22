@@ -40,9 +40,9 @@ func dataSourcePingdomContactsRead(ctx context.Context, d *schema.ResourceData, 
 		return diag.Errorf("Error retrieving contacts: %s", err)
 	}
 
-	var ids = make([]int, len(contacts))
-	var names = make([]string, len(contacts))
-	var types = make([]string, len(contacts))
+	var ids = make([]int, 0, len(contacts))
+	var names = make([]string, 0, len(contacts))
+	var types = make([]string, 0, len(contacts))
 	for _, contact := range contacts {
 		ids = append(ids, contact.ID)
 		names = append(names, contact.Name)
