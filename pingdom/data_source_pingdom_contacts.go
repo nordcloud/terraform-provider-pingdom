@@ -50,9 +50,15 @@ func dataSourcePingdomContactsRead(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
-	d.Set("ids", ids)
-	d.Set("names", names)
-	d.Set("types", types)
+	if err := d.Set("ids", ids); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("names", names); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("types", types); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }

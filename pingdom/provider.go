@@ -40,6 +40,7 @@ func Provider() *schema.Provider {
 			"pingdom_contact":      dataSourcePingdomContact(),
 			"pingdom_contacts":     dataSourcePingdomContacts(),
 			"pingdom_team":         dataSourcePingdomTeam(),
+			"pingdom_teams":        dataSourcePingdomTeams(),
 			"pingdom_integration":  dataSourcePingdomIntegration(),
 			"pingdom_integrations": dataSourcePingdomIntegrations(),
 			"pingdom_active_users": dataSourceSolarwindsActiveUsers(),

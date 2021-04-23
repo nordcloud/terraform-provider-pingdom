@@ -2,16 +2,16 @@ package pingdom
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"strconv"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataSourcePingdomIntegrations() *schema.Resource {
+func dataSourcePingdomTeams() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourcePingdomIntegrationsRead,
+		ReadContext: dataSourcePingdomTeamsRead,
 
 		Schema: map[string]*schema.Schema{
 			"names": {
@@ -28,21 +28,21 @@ func dataSourcePingdomIntegrations() *schema.Resource {
 	}
 }
 
-func dataSourcePingdomIntegrationsRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	client := meta.(*Clients).PingdomExt
-	integrations, err := client.Integrations.List()
-	log.Printf("[DEBUG] integrations : %v", integrations)
+func dataSourcePingdomTeamsRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*Clients).Pingdom
+	teams, err := client.Teams.List()
 	if err != nil {
-		return diag.Errorf("Error retrieving team: %s", err)
-	}
-	var ids []int
-	var names []string
-	for _, integration := range integrations {
-		ids = append(ids, integration.ID)
-		names = append(names, integration.UserData["name"])
+		return diag.Errorf("Error retrieving teams: %s", err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", len(integrations)))
+	var ids = make([]int, 0, len(teams))
+	var names = make([]string, 0, len(teams))
+	for _, team := range teams {
+		ids = append(ids, team.ID)
+		names = append(names, team.Name)
+	}
+
+	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
 	if err := d.Set("ids", ids); err != nil {
 		return diag.FromErr(err)
 	}
