@@ -1,7 +1,6 @@
 package pingdom
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -28,8 +27,5 @@ func TestAccDataSourcePingdomIntegrations_basic(t *testing.T) {
 }
 
 func testAccDataSourcePingdomIntegrationsConfig() string {
-	return fmt.Sprintf(`
-	  data "pingdom_integrations" "all" {}
-	  `)
-
+	return `data "pingdom_integrations" "all" {}`
 }
