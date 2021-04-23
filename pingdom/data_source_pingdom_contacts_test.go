@@ -44,10 +44,7 @@ resource "pingdom_contact" "test" {
 }
 
 data "pingdom_contacts" "test" {
-  depends_on = [
-    pingdom_contact.test,
-  ]
+
 }
 `, name)
-
 }
