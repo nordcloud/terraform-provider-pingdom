@@ -35,11 +35,6 @@ func resourceSolarwindsUser() *schema.Resource {
 				Required: true,
 				ForceNew: false,
 			},
-			"active_user_id": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: false,
-			},
 			"products": {
 				Type:     schema.TypeSet,
 				Optional: true,
