@@ -73,10 +73,6 @@ func userFromResource(d *schema.ResourceData) (*solarwinds.User, error) {
 		user.Role = v.(string)
 	}
 
-	if v, ok := d.GetOk("active_user_id"); ok {
-		user.UserId = v.(uint64)
-	}
-
 	if v, ok := d.GetOk("products"); ok {
 		interfaceSlice := v.(*schema.Set).List()
 		user.Products = expandUserProducts(interfaceSlice)
@@ -141,10 +137,9 @@ func resourceSolarwindsUserRead(ctx context.Context, d *schema.ResourceData, met
 	}
 
 	for k, v := range map[string]interface{}{
-		"email":          user.Email,
-		"role":           user.Role,
-		"active_user_id": user.UserId,
-		"products":       flattenUserProducts(user.Products),
+		"email":    user.Email,
+		"role":     user.Role,
+		"products": flattenUserProducts(user.Products),
 	} {
 		if err := d.Set(k, v); err != nil {
 			return diag.FromErr(err)

@@ -43,7 +43,6 @@ func Provider() *schema.Provider {
 			"pingdom_teams":        dataSourcePingdomTeams(),
 			"pingdom_integration":  dataSourcePingdomIntegration(),
 			"pingdom_integrations": dataSourcePingdomIntegrations(),
-			"pingdom_active_users": dataSourceSolarwindsActiveUsers(),
 		},
 		ConfigureFunc: providerConfigure,
 	}
