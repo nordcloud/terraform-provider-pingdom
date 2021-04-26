@@ -54,5 +54,4 @@ data "pingdom_teams" "test" {
   ]
 }
 `, name, name)
-
 }

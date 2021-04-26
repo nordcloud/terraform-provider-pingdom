@@ -7,7 +7,6 @@ import (
 )
 
 func TestAccDataSourcePingdomIntegrations_basic(t *testing.T) {
-
 	datasourceName := "data.pingdom_integrations.all"
 
 	resource.Test(t, resource.TestCase{

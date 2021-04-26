@@ -41,5 +41,4 @@ func testAccDataSourcePingdomIntegrationConfig(providerName string, active bool,
 		name = pingdom_integration.test.name
 	  }
 	  `, providerName, active, name, url)
-
 }
