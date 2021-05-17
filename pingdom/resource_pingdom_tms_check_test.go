@@ -81,6 +81,9 @@ func testAccCheckPingdomTmsCheckDestroy(s *terraform.State) error {
 		}
 
 		resp, err := client.TMSCheck.List()
+		if err != nil {
+			return err
+		}
 		for _, ck := range resp {
 			if ck.ID == id {
 				return fmt.Errorf("TMS Check (%s) still exists.", rs.Primary.ID)
