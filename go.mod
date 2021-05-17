@@ -12,5 +12,3 @@ require (
 	github.com/nordcloud/go-pingdom v1.3.2-0.20210419074126-a19f7e149e75
 	github.com/zclconf/go-cty v1.7.1 // indirect
 )
-
-replace github.com/nordcloud/go-pingdom => /Users/chszchen/GolandProjects/go-pingdom
