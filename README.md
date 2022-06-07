@@ -75,7 +75,7 @@ Apply with:
  terraform apply \
     -var 'pingdom_api_token=YOUR_API_TOKEN'
     -var 'solarwinds_user=YOUR_SOLARWINDS_USER'
-    -var 'solarwinds_user=YOUR_SOLARWINDS_PASSWD'
+    -var 'solarwinds_passwd=YOUR_SOLARWINDS_PASSWD'
 ```
 
 **Using attributes from other resources**
